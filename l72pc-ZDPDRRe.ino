@@ -35,9 +35,12 @@ DeviceAddress tempDeviceAddress;
 //PIN's
 int pwm = 16; //PWM (D0 on board)
 int pinDoorSensor = 5; //Door sensor (D1 on board)
-int pinRPMCarbon = 14; //RPM carbon sensor (D5 on board)
+int pinRPMCarbon = 13; //RPM carbon sensor (D7 on board)
 int pinRelay = 12; //Relay (D6 on board)
 int relayState = 0; //State relay temp
+volatile int newrpmcarbon; //Count RPM carbon
+
+unsigned long lastmillis=0;
 
 
 //Zabbix
@@ -83,9 +86,9 @@ void setup() {
   pinMode(pwm, OUTPUT); //PWM carbon filter
 
   //RPM
-  attachInterrupt(pinRPMCarbon, rpmcarb, CHANGE);
+  //attachInterrupt(digitalPinToInterrupt(pinRPMCarbon), rpmcarb, CHANGE);
   pinMode(pinRPMCarbon,INPUT);
-
+  
   //Relay
   pinMode(pinRelay, OUTPUT);
 }
@@ -110,8 +113,9 @@ void loop() {
 
 
   //PWN
-  int pwmspeed = map(tempproff, 24, 37, 80, 255);
-  if (pwmspeed<80) {pwmspeed=80;}
+  int minSpeedCarb=70; //60 не не стартует
+  int pwmspeed = map(tempproff, 24, 37, minSpeedCarb, 255);
+  if (pwmspeed<minSpeedCarb) {pwmspeed=minSpeedCarb;}
   if (pwmspeed>255) {pwmspeed=255;}
   analogWrite(pwm, pwmspeed);
 
@@ -121,11 +125,12 @@ void loop() {
 
 
   //RPM carbon fan
-  int newrpmcarbon=0;
   rpmcarbon=0;
+  attachInterrupt(digitalPinToInterrupt(pinRPMCarbon), rpmcarb, CHANGE);
   delay(1000);
+  detachInterrupt(pinRPMCarbon);
   newrpmcarbon=rpmcarbon*60/4;
-  
+
 
   //Relay
   digitalWrite(pinRelay,HIGH);
@@ -164,7 +169,7 @@ void loop() {
 
   Serial.println();
   
-  
+
   checkConnection();
   zSender.ClearItem();
   
